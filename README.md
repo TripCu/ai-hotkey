@@ -1,115 +1,127 @@
 # AI Hotkey Assistant
 
-A portable Python project that lets you trigger a local LLM helper with a single hotkey.  
-The bootstrap script spins up a FastAPI backend, a global keyboard listener, and handles
-prompt routing to Ollama or any OpenAI-compatible server.
+Trigger a local LLM with a global hotkey. `run.py` bootstraps everything: creates a virtual environment, installs dependencies, ensures Ollama is installed, launches the backend, and starts the listener plus overlay. The backend can also call an OpenAI-compatible endpoint, performs optional OCR, and enriches prompts with recent chat history and Markdown notes.
+
+---
 
 ## Highlights
+- One-command startup (`python run.py`) across macOS, Windows, and Linux.
+- Neon floating overlay + console output, with configurable hotkeys (capture, clipboard paste, exit).
+- Context-aware prompting: merges recent chat history and relevant Markdown/Obsidian notes.
+- FastAPI backend with API-key auth, optional subnet validator, `/generate-with-image`, and pluggable Ollama/OpenAI backends.
+- All paths are relative; move the folder anywhere and it still works.
 
-- Cross-platform bootstrap (`run.py`) that builds a local virtualenv, installs dependencies, and launches both backend and listener.
-- FastAPI backend with API-key protection, text-and-image generation endpoints, logging to SQLite and plain text.
-- Hotkey-driven client built on `pynput`, configurable start/exit keys, and domain-aware prompting.
-- Optional subnetting validator with structured feedback.
-- Native support for locally hosted Ollama models (`llama3.1:8b` by default) plus OpenAI-compatible endpoints.
-- Pure relative paths so the folder can be moved between machines unchanged.
-
-## Folder Layout
-
+## Repository Layout
 ```
 ai-hotkey/
   run.py
   requirements.txt
   README.md
   .env
+  notes/
+    README.md          # drop Markdown notes here (or point NOTES_PATH elsewhere)
 
   app/
     client/
+      config.py
       listener.py
+      overlay.py
     server/
       backend.py
+      config.py
+      notes.py
       prompts/
         base.md
         domains.yaml
+      services/
+        generation.py
       validators/
         ip_network.py
 
   data/
-    ai_output.txt
-    ai_logs.db
     tmp/
 ```
 
-## Prerequisites
+## Requirements
+- Python 3.9+
+- Ollama (auto-installed on macOS/Linux; Windows uses the official installer run by `run.py`)
+- Optional: Tesseract OCR binary for `/generate-with-image`
 
-- Python 3.9 or newer on macOS, Windows, or Linux.
-- Optional for image prompts: Tesseract OCR binary on your PATH.
+## Quick Start
 
-## Configuration
+## Quick Start
 
-Edit `.env` to adjust backend selection, hotkeys, ports, or default domain hints.  
-The project reads configuration directly from the file; exporting environment variables is not required.
-
-## Running the App
-
+> **One-Time Bootstrap (all platforms)**
 ```bash
+git clone https://github.com/your-org/ai-hotkey.git
+cd ai-hotkey
+python -m venv .venv  # use `python3` on macOS/Linux
+```
+
+### Windows PowerShell
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate
+pip install -r requirements.txt
 python run.py
 ```
 
-The script will create `.venv/`, install dependencies, attempt to install Ollama (macOS via Homebrew/pkg, Windows via the official installer, Linux via install.sh), pull the configured model, launch the Ollama daemon if needed, start the backend on the requested host/port, wait until it reports healthy, then connect the hotkey listener. Some steps may prompt for administrative credentials when package managers or system installers require them.
+### macOS/Linux
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 run.py
 
-## Using the Hotkey Listener
+### What `python run.py` does
+1. Creates/updates the virtualenv and installs Python dependencies.
+2. Installs Ollama if missing (Homebrew/pkg on macOS, install script on Linux; Windows uses the official installer).
+3. Starts (or reuses) the Ollama daemon and pulls `OLLAMA_MODEL`.
+4. Clears previous chat logs for a fresh session.
+5. Launches the FastAPI backend on `HOST:PORT`.
+6. Waits for `/status` to report healthy, then starts the listener + overlay.
+```
 
-1. Focus any window where you can type text.
-2. Press the start key (` by default) to begin capture.
-3. Type your prompt and press Enter.
-4. To paste from the clipboard instantly, press `CLIPBOARD_KEY` (default `\`) and the listener will send the clipboard contents without typing.
-5. The full response appears both in the console and in a floating overlay window (click or press Esc on the overlay to dismiss). The overlay auto-hides after the configured timeout.
-6. Press the exit key (ESC by default) to stop the listener and shut everything down gracefully.
+First launch may prompt for admin rights (Ollama install) and will download the default model (`llama3.1:8b`). Subsequent runs reuse cached models/daemon if available.
 
-All prompts and responses are appended (one JSON object per line) to `data/ai_output.jsonl` and stored in SQLite (`data/ai_logs.db`).
+## Hotkeys & Overlay
+1. Press the start key (default backtick `) to begin capture.
+2. Type your prompt and hit Enter — or press the clipboard key (default `\`) to send your clipboard instantly.
+3. Responses appear in the terminal and in a neon overlay pinned to the top‑right. Click or press Esc to dismiss; it auto-hides after `OVERLAY_DURATION` seconds.
+4. Press the exit key (default `ESC`) to stop the listener and shut everything down.
 
-## Recommended Ollama Models
+## Configuration (`.env`)
+| Key | Description |
+|-----|-------------|
+| `AI_BACKEND` | `ollama` (default) or `openai_compatible` |
+| `OLLAMA_MODEL` | Model tag to pull/use (default `llama3.1:8b`) |
+| `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | Set when using an OpenAI-compatible backend |
+| `HOST`, `PORT` | Backend bind host/port |
+| `API_KEY` | Required `x-api-key` header value |
+| `START_KEY`, `EXIT_KEY`, `CLIPBOARD_KEY` | Hotkeys for capture/exit/clipboard |
+| `OVERLAY_ENABLED`, `OVERLAY_DURATION`, `OVERLAY_OPACITY`, `OVERLAY_WIDTH` | Overlay settings |
+| `QUESTION_DOMAIN` | Optional domain hint (e.g., `networking`) |
+| `NOTES_PATH` | Relative or absolute folder containing Markdown notes |
 
-The default backend uses Ollama. Suggested models:
+All prompts/responses are logged locally (JSONL + SQLite) in `data/`. Each run wipes previous logs, so every session is clean. 
 
-- General-purpose coding & troubleshooting: `ollama run llama3.1:8b` (balanced quality and speed).
-- Lightweight helper for lower-powered machines: `ollama run phi3:3.8b`.
-- Networking and infrastructure reasoning with larger context: `ollama run mistral-large:latest` (requires more RAM/VRAM).
-- Multimodal/image-ready options for future `/generate-with-image` support: `ollama run llama3.2-vision`, `ollama run llava:13b`, or `ollama run bakllava:7b`. These models can read images once you enable OCR/payload handling on the backend.
+## Notes Integration
+Add Markdown files to `notes/` (or point `NOTES_PATH` elsewhere). The backend scores the files for keyword overlap and injects the most relevant snippets into the LLM context. Large files are truncated to ~1,200 characters per response. To keep proprietary notes private, store them in a nested folder like `notes/private/` (already ignored in `.gitignore`).
 
-Install a model by running `ollama pull <model-name>`. Update `.env` `OLLAMA_MODEL` to match the tag you pulled.
-
-## Switching Model Backends
-
-- `ollama` (default): Call a local Ollama REST API (`OLLAMA_URL` / `OLLAMA_MODEL`, defaults to `llama3.1:8b`).
-- `openai_compatible`: Send chat completions to any OpenAI-style endpoint.
-- Optional: set `QUESTION_DOMAIN=networking` to bias prompt hints and validator usage.
-- Overlay controls:
-  - `OVERLAY_ENABLED` (default `true`)
-  - `OVERLAY_DURATION` in seconds before auto-dismiss (default `15`)
-  - `OVERLAY_OPACITY` between `0` and `1`
-  - `OVERLAY_WIDTH` in pixels for text wrapping
-- Clipboard shortcut:
-  - `CLIPBOARD_KEY` (default `\`) sends whatever is on the clipboard straight to the model.
-- Notes integration:
-  - `NOTES_PATH` (optional) can point to a folder containing Obsidian/Markdown notes. The backend will surface the most relevant snippets in each prompt to improve contextual answers.
-
-You can override the default model per request by including `"model": "..."` in the JSON payload.
+## Backend Options
+- **Ollama**: default. `run.py` will attempt to install/start Ollama if needed and pull the configured model.
+- **OpenAI-compatible**: set `AI_BACKEND=openai_compatible` and supply base URL, API key, and model in `.env`.
 
 ## Image Notes
-
-The `/generate-with-image` endpoint accepts multipart form uploads. If Pillow and pytesseract are installed and Tesseract is available, the backend will OCR the images and append the text to the prompt before calling the LLM. Otherwise it reports that OCR is unavailable while still returning a model response.
+`POST /generate-with-image` accepts multipart uploads (prompt + images). If Pillow + pytesseract + Tesseract OCR are available, the backend extracts text from the images and appends it to the prompt; otherwise it returns a response noting OCR is unavailable.
 
 ## Security Notice
+The listener installs a global keyboard hook; run it only on trusted machines and disable it when entering sensitive information. No data leaves your machine unless your chosen backend sends prompts to a remote service.
 
-The hotkey listener installs a global keyboard hook. Only run the tool on machines you trust and disable it before entering sensitive information.
+## Contributing / Publishing Checklist
+- Remove secrets from `.env` before committing.
+- Update `requirements.txt` if you add dependencies.
+- Add tests or smoke scripts where possible (`pytest` recommended).
+- Consider enabling GitHub Actions (lint/test) before making the repo public.
 
-<!--
-Acceptance Tests
-1. python run.py creates .venv if missing, installs deps, starts backend, then starts listener.
-2. GET /status returns JSON with ok=true within 10 seconds of boot.
-3. Trigger hotkey, type “What’s 2+2? End with Answer line.” Then press Enter → console prints a response and a line FINAL: 4 (or similar); data/ai_output.txt is appended.
-4. Set .env:AI_BACKEND=openai_compatible and OPENAI_BASE_URL to a local proxy (or leave default); server still runs and responds (if upstream reachable).
-5. Set .env:QUESTION_DOMAIN=subnetting and ask a subnetting question → response contains steps and an Answer: with CIDR-style outputs; validator populates valid and validation.
-6. /generate-with-image succeeds even if OCR isn’t available, returning a response that notes OCR absence.
--->
+Happy automating!

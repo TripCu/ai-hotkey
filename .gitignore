@@ -19,6 +19,9 @@ data/ai_output.jsonl
 data/ai_logs.db
 data/tmp/
 *.log
+# user-provided notes (optional)
+notes/private/
+notes/local/
 
 # IDE/editor settings
 .vscode/
@@ -37,7 +40,3 @@ data/tmp/
 htmlcov/
 .coverage
 *.cover
-
-app/client/__pycache__
-data/ai_logs.db
-data/ai_output.jsonl
