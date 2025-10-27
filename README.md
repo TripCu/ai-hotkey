@@ -44,6 +44,7 @@ ai-hotkey/
 
 ## Requirements
 - Python 3.9+
+  - Windows installers **must** use Python 3.9–3.12 (Pillow wheels are not yet available for 3.13/3.14 on Windows).
 - Ollama (auto-installed on macOS/Linux; Windows uses the official installer run by `run.py`)
 - Optional: Tesseract OCR binary for `/generate-with-image`
 
@@ -66,6 +67,15 @@ pip install -r requirements.txt
 python run.py
 ```
 
+Or automate everything with the bundled helper:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned  # first time only
+PowerShell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1 -Mode full
+```
+
+Use `-Mode backend` or `-Mode listener` for the one-off scripts.
+
 ### macOS/Linux
 ```bash
 python3 -m venv .venv
@@ -80,6 +90,24 @@ python3 run.py
 4. Clears previous chat logs for a fresh session.
 5. Launches the FastAPI backend on `HOST:PORT`.
 6. Waits for `/status` to report healthy, then starts the listener + overlay.
+
+### Backend or Listener Only
+- `python run_backend.py` — start only the API backend (plus Ollama daemon). The script stays running until you press Ctrl+C.
+- `python run_listener.py` — start only the hotkey listener/overlay. Ensure the backend is already reachable on `HOST:PORT` before launching.
+
+### Single-User vs Multi-User
+- **Solo workflow**: run `python run.py` on your machine — it launches both backend and listener locally.
+- **Shared workflow**:
+  1. On the host machine (where the LLM and notes live):
+     - Set `.env:HOST=0.0.0.0` (or a specific interface IP).
+     - Ensure `API_KEY` is a secret value.
+     - Run `python run_backend.py` and keep it running. Open TCP port `PORT` (default `8000`) in your firewall.
+  2. On each client machine:
+     - Copy the repo (or distribute a packaged release).
+     - In `.env`, set `HOST=<server-ip>` and use the same `API_KEY`.
+     - Run `python run_listener.py` to connect to the shared backend.
+
+Clients inherit the same overlay, clipboard key, and note-search behaviour, but only the host needs the Ollama installation and Markdown vault.
 ```
 
 First launch may prompt for admin rights (Ollama install) and will download the default model (`llama3.1:8b`). Subsequent runs reuse cached models/daemon if available.

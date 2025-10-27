@@ -10,3 +10,4 @@ PyYAML==6.*
 Pillow==10.*          # only needed when you later enable OCR/image endpoint
 pytesseract==0.3.*    # optional (if you install Tesseract on target machine)
 pyperclip==1.9.*
+psutil==6.*

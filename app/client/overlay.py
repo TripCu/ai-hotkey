@@ -37,7 +37,6 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     foreground = "#ffffff"
 
     root.configure(bg=background)
-    root.wm_attributes("-transparentcolor", background)
 
     label = tk.Label(
         text=text,
@@ -151,7 +150,7 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             panel.setLevel_(NSStatusWindowLevel)
             panel.setOpaque_(False)
             panel.setAlphaValue_(max(0.05, min(appearance.opacity, 1.0)))
-            panel.setBackgroundColor_(NSColor.clearColor())
+            panel.setBackgroundColor_(NSColor.blackColor())
             panel.setHasShadow_(True)
             behaviors = (
                 NSWindowCollectionBehaviorCanJoinAllSpaces

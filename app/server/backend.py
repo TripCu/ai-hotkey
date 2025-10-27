@@ -4,7 +4,7 @@ from io import BytesIO
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -23,6 +23,7 @@ from app.server.prompts_loader import load_base_prompt, load_domain_prompts
 from app.server.services.generation import archive_response, generate_response
 from app.server.storage import ensure_data_paths, get_recent_entries
 from app.server.notes import gather_relevant_notes
+from app.server import telemetry
 
 logger = logging.getLogger("app.server.backend")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
@@ -106,7 +107,12 @@ async def append_ocr_context(files: Optional[List[UploadFile]]) -> tuple[str, Li
     return "\n".join(notes), extracted_segments
 
 
-app = FastAPI(title="AI Hotkey Backend", version="1.1.0")
+app = FastAPI(title="AI Hotkey Backend", version="1.2.0")
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    asyncio.create_task(telemetry.monitor_resources())
 
 
 @app.get("/status")
@@ -118,10 +124,15 @@ async def get_status() -> Dict[str, Any]:
     }
 
 
+@app.get("/telemetry")
+async def get_telemetry() -> Dict[str, Any]:
+    return telemetry.get_metrics()
+
+
 @app.post("/generate", response_model=None, dependencies=[Depends(verify_api_key)])
-async def generate(payload: Dict[str, Any]) -> JSONResponse:
-    request = GenerationPayload.model_validate(payload)
-    return await _handle_generation(request)
+async def generate(payload: Dict[str, Any], request: Request) -> JSONResponse:
+    generation_payload = GenerationPayload.model_validate(payload)
+    return await _handle_generation(generation_payload, request)
 
 
 @app.post("/generate-with-image", response_model=None, dependencies=[Depends(verify_api_key)])
@@ -129,9 +140,9 @@ async def generate_with_image(
     prompt: str = Form(...),
     files: Optional[List[UploadFile]] = File(default=None),
 ) -> JSONResponse:
-    request = GenerationPayload(prompt=prompt, context=GenerationContext())
+    payload = GenerationPayload(prompt=prompt, context=GenerationContext())
     if SETTINGS.question_domain:
-        request.context.question_type = SETTINGS.question_domain
+        payload.context.question_type = SETTINGS.question_domain
 
     ocr_summary, extracted_segments = await append_ocr_context(files)
     extended_prompt_parts = [prompt]
@@ -139,9 +150,9 @@ async def generate_with_image(
         extended_prompt_parts.append("Additional OCR context:\n" + "\n\n".join(extracted_segments))
     if ocr_summary:
         extended_prompt_parts.append(f"[Notes]\n{ocr_summary}")
-    request.prompt = "\n\n".join(extended_prompt_parts)
+    payload.prompt = "\n\n".join(extended_prompt_parts)
 
-    return await _handle_generation(request)
+    return await _handle_generation(payload, None)
 
 
 class GenerationContext(BaseModel):
@@ -156,7 +167,56 @@ class GenerationPayload(BaseModel):
     model_config = {"extra": "ignore"}
 
 
-async def _handle_generation(request: GenerationPayload) -> JSONResponse:
+async def _handle_generation(payload: GenerationPayload, request: Optional[Request]) -> JSONResponse:
+    domain = (payload.context.question_type or "").strip() or None
+    if not domain and SETTINGS.question_domain:
+        domain = SETTINGS.question_domain
+    system_prompt = compose_system_prompt(domain)
+
+    history_entries = get_recent_entries(limit=5)
+    history_section = ""
+    if history_entries:
+        history_blocks = [
+            f"User: {item['prompt'].strip()}\nAssistant: {item['response'].strip()}"
+            for item in history_entries
+        ]
+        history_section = (
+            "Here is the recent conversation history between the user and assistant:\n"
+            + "\n\n".join(history_blocks)
+            + "\n\n"
+        )
+
+    notes_section = ""
+    notes_snippets = gather_relevant_notes(payload.prompt)
+    if notes_snippets:
+        notes_section = (
+            "Relevant notes extracted from the knowledge base:\n"
+            + "\n\n".join(notes_snippets)
+            + "\n\n"
+        )
+
+    prompt_body = (
+        history_section
+        + notes_section
+        + "Respond to the user's latest request while referencing prior context when helpful:\n"
+        + payload.prompt.strip()
+    )
+
+    client_ip = "unknown"
+    api_key = ""
+    if request is not None:
+        client = request.client
+        client_ip = client.host if client else "unknown"
+        api_key = request.headers.get("x-api-key", "")
+    telemetry.record_request(client_ip, api_key, len(prompt_body))
+
+    try:
+        result = await generate_response(
+            prompt=prompt_body,
+            system_prompt=system_prompt,
+            domain=domain,
+            model_override=payload.model,
+        )
     domain = (request.context.question_type or "").strip() or None
     if not domain and SETTINGS.question_domain:
         domain = SETTINGS.question_domain
@@ -205,7 +265,7 @@ async def _handle_generation(request: GenerationPayload) -> JSONResponse:
     valid, validation = run_validator(domain, result["final_answer"])
     await archive_response(
         request_id=result["id"],
-        prompt=request.prompt,
+        prompt=payload.prompt,
         response=result["response"],
         final_answer=result["final_answer"],
         elapsed_ms=result["elapsed_ms"],
