@@ -69,11 +69,11 @@ switch ($Mode) {
     }
     "backend" {
         Write-Host "Launching backend only..." -ForegroundColor Green
-        & $venvPython run_backend.py
+        & $venvPython backend/run_backend.py
     }
     "listener" {
         Write-Host "Launching listener only..." -ForegroundColor Green
         Write-Host "Ensure backend is reachable at HOST:PORT before continuing." -ForegroundColor Yellow
-        & $venvPython run_listener.py
+        & $venvPython client/run_listener.py
     }
 }

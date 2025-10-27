@@ -5,6 +5,10 @@ import sys
 import time
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from run import (
     ensure_venv,
     install_dependencies,
@@ -14,8 +18,6 @@ from run import (
     venv_python,
     wait_for_status,
 )
-
-ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
 ENV_FILE = ROOT / ".env"
 

@@ -5,7 +5,11 @@ import sys
 import time
 from pathlib import Path
 
-from app.server.storage import clear_logs
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from backend.storage import clear_logs
 from run import (
     ensure_ollama_installed,
     ensure_ollama_model,
@@ -18,8 +22,6 @@ from run import (
     venv_python,
     wait_for_status,
 )
-
-ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
 ENV_FILE = ROOT / ".env"
 

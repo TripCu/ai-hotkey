@@ -9,12 +9,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT / "data"
+BACKEND_ROOT = Path(__file__).resolve().parent
+DATA_DIR = BACKEND_ROOT / "data"
 LOG_FILE = DATA_DIR / "ai_output.jsonl"
 DB_PATH = DATA_DIR / "ai_logs.db"
 
-logger = logging.getLogger("app.server.storage")
+logger = logging.getLogger("backend.storage")
 
 
 def ensure_data_paths() -> None:

@@ -21,23 +21,32 @@ ai-hotkey/
   notes/
     README.md          # drop Markdown notes here (or point NOTES_PATH elsewhere)
 
-  app/
-    client/
-      config.py
-      listener.py
-      overlay.py
-    server/
-      backend.py
-      config.py
-      notes.py
-      prompts/
-        base.md
-        domains.yaml
-      services/
-        generation.py
+  client/
+    __init__.py
+    config.py
+    listener.py
+    overlay.py
 
-  data/
-    tmp/
+  backend/
+    __init__.py
+    backend.py
+    data/
+      tmp/
+    config.py
+    clients/
+      __init__.py
+      ollama_client.py
+      openai_client.py
+    notes.py
+    prompts/
+      base.md
+      domains.yaml
+    prompts_loader.py
+    services/
+      __init__.py
+      generation.py
+    storage.py
+    telemetry.py
 ```
 
 ## Requirements
@@ -90,8 +99,8 @@ python3 run.py
 6. Waits for `/status` to report healthy, then starts the listener + overlay.
 
 ### Backend or Listener Only
-- `python run_backend.py` — start only the API backend (plus Ollama daemon). The script stays running until you press Ctrl+C.
-- `python run_listener.py` — start only the hotkey listener/overlay. Ensure the backend is already reachable on `HOST:PORT` before launching.
+- `python backend/run_backend.py` — start only the API backend (plus Ollama daemon). The script stays running until you press Ctrl+C.
+- `python client/run_listener.py` — start only the hotkey listener/overlay. Ensure the backend is already reachable on `HOST:PORT` before launching.
 
 ### Single-User vs Multi-User
 - **Solo workflow**: run `python run.py` on your machine — it launches both backend and listener locally.
@@ -99,11 +108,11 @@ python3 run.py
   1. On the host machine (where the LLM and notes live):
      - Set `.env:HOST=0.0.0.0` (or a specific interface IP).
      - Ensure `API_KEY` is a secret value.
-     - Run `python run_backend.py` and keep it running. Open TCP port `PORT` (default `8000`) in your firewall.
+    - Run `python backend/run_backend.py` and keep it running. Open TCP port `PORT` (default `8000`) in your firewall.
   2. On each client machine:
      - Copy the repo (or distribute a packaged release).
      - In `.env`, set `HOST=<server-ip>` and use the same `API_KEY`.
-     - Run `python run_listener.py` to connect to the shared backend.
+    - Run `python client/run_listener.py` to connect to the shared backend.
 
 Clients inherit the same overlay, clipboard key, and note-search behaviour, but only the host needs the Ollama installation and Markdown vault.
 ```
@@ -129,7 +138,7 @@ First launch may prompt for admin rights (Ollama install) and will download the 
 | `QUESTION_DOMAIN` | Optional domain hint (e.g., `networking`) |
 | `NOTES_PATH` | Relative or absolute folder containing Markdown notes |
 
-All prompts/responses are logged locally (JSONL + SQLite) in `data/`. Each run wipes previous logs, so every session is clean. 
+All prompts/responses are logged locally (JSONL + SQLite) in `backend/data/`. Each run wipes previous logs, so every session is clean. 
 
 ## Notes Integration
 Add Markdown files to `notes/` (or point `NOTES_PATH` elsewhere). The backend scores the files for keyword overlap and injects the most relevant snippets into the LLM context. Large files are truncated to ~1,200 characters per response. To keep proprietary notes private, store them in a nested folder like `notes/private/` (already ignored in `.gitignore`).

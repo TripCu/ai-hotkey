@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from app.server.config import get_settings
+from backend.config import get_settings
 
 
 async def generate(system_prompt: str, user_prompt: str, model: str) -> tuple[str, str]:
@@ -27,4 +27,3 @@ async def generate(system_prompt: str, user_prompt: str, model: str) -> tuple[st
         first_choice = data.get("choices", [{}])[0]
         message = first_choice.get("message", {})
         return data.get("model", model), str(message.get("content", "")).strip()
-

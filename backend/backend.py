@@ -20,14 +20,14 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     pytesseract = None  # type: ignore[assignment]
 
-from app.server.config import get_settings
-from app.server.prompts_loader import load_base_prompt, load_domain_prompts
-from app.server.services.generation import archive_response, generate_response
-from app.server.storage import ensure_data_paths, get_recent_entries
-from app.server.notes import gather_relevant_notes
-from app.server.telemetry import monitor_resources, record_request, get_metrics
+from backend.config import get_settings
+from backend.prompts_loader import load_base_prompt, load_domain_prompts
+from backend.services.generation import archive_response, generate_response
+from backend.storage import ensure_data_paths, get_recent_entries
+from backend.notes import gather_relevant_notes
+from backend.telemetry import monitor_resources, record_request, get_metrics
 
-logger = logging.getLogger("app.server.backend")
+logger = logging.getLogger("backend.backend")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 
 SETTINGS = get_settings()

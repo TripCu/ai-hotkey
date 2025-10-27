@@ -15,9 +15,9 @@ dist/
 .eggs/
 
 # Logs & data artifacts
-data/ai_output.jsonl
-data/ai_logs.db
-data/tmp/
+backend/data/ai_output.jsonl
+backend/data/ai_logs.db
+backend/data/tmp/
 *.log
 # user-provided notes (optional)
 notes/private/

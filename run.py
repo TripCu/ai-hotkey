@@ -17,7 +17,7 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen, urlretrieve
 
-from app.server.storage import clear_logs
+from backend.storage import clear_logs
 
 ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
@@ -261,7 +261,7 @@ def start_backend(python_executable: Path, env: Dict[str, str]) -> Optional[subp
         str(python_executable),
         "-m",
         "uvicorn",
-        "app.server.backend:app",
+        "backend.backend:app",
         "--host",
         host,
         "--port",
@@ -308,7 +308,7 @@ def wait_for_status(
 
 def start_listener(python_executable: Path, env: Dict[str, str]) -> subprocess.Popen:
     print("Starting hotkey listener...")
-    cmd = [str(python_executable), "-m", "app.client.listener"]
+    cmd = [str(python_executable), "-m", "client.listener"]
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     child_env = {**os.environ, **env}
     child_env["PYTHONPATH"] = f"{ROOT}{os.pathsep}" + child_env.get("PYTHONPATH", "")

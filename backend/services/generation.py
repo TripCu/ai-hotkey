@@ -7,9 +7,9 @@ from typing import Dict, Optional, Tuple
 
 from fastapi import HTTPException
 
-from app.server.clients import ollama_client, openai_client
-from app.server.config import get_settings
-from app.server.storage import LogEntry, persist
+from backend.clients import ollama_client, openai_client
+from backend.config import get_settings
+from backend.storage import LogEntry, persist
 
 
 def extract_final_answer(text: str) -> Optional[str]:

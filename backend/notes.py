@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import List
 
-from app.server.config import get_settings
+from backend.config import get_settings
 
 MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mdx"}
 MAX_NOTE_CHARS = 1200
@@ -16,7 +16,7 @@ def gather_relevant_notes(query: str, limit: int = 3) -> List[str]:
     if not notes_root:
         return []
 
-    base_path = (Path(notes_root) if Path(notes_root).is_absolute() else Path(__file__).resolve().parents[2] / notes_root)
+    base_path = (Path(notes_root) if Path(notes_root).is_absolute() else Path(__file__).resolve().parents[1] / notes_root)
     if not base_path.exists() or not base_path.is_dir():
         return []
 

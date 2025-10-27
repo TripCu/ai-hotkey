@@ -12,8 +12,8 @@ import pyperclip
 from pyperclip import PyperclipException
 from pynput import keyboard
 
-from app.client.config import ClientConfig, load_client_config
-from app.client.overlay import OverlayAppearance, show_overlay
+from client.config import ClientConfig, load_client_config
+from client.overlay import OverlayAppearance, show_overlay
 
 
 SPECIAL_KEYS = {

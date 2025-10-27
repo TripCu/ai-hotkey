@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from app.server.config import get_settings
+from backend.config import get_settings
 
 
 async def generate(prompt: str, model: str) -> tuple[str, str]:
@@ -19,4 +19,3 @@ async def generate(prompt: str, model: str) -> tuple[str, str]:
         response.raise_for_status()
         data = response.json()
         return data.get("model", model), data.get("response", "").strip()
-

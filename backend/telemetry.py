@@ -9,7 +9,7 @@ from typing import Deque, Dict, Optional
 
 import psutil
 
-logger = logging.getLogger("app.server.telemetry")
+logger = logging.getLogger("backend.telemetry")
 
 
 @dataclass
