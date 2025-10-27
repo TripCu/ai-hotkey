@@ -282,7 +282,7 @@ def wait_for_status(
 
 def start_listener(python_executable: Path, env: Dict[str, str]) -> subprocess.Popen:
     print("Starting hotkey listener...")
-    cmd = [str(python_executable), str(ROOT / "app" / "client" / "listener.py")]
+    cmd = [str(python_executable), "-m", "app.client.listener"]
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     child_env = {**os.environ, **env}
     child_env["PYTHONPATH"] = f"{ROOT}{os.pathsep}" + child_env.get("PYTHONPATH", "")

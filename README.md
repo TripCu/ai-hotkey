@@ -65,7 +65,7 @@ The script will create `.venv/`, install dependencies, attempt to install Ollama
 4. The full response appears both in the console and in a floating overlay window (click or press Esc on the overlay to dismiss). The overlay auto-hides after the configured timeout.
 5. Press the exit key (ESC by default) to stop the listener and shut everything down gracefully.
 
-All prompts and responses are appended to `data/ai_output.txt` and stored in SQLite (`data/ai_logs.db`).
+All prompts and responses are appended (one JSON object per line) to `data/ai_output.jsonl` and stored in SQLite (`data/ai_logs.db`).
 
 ## Recommended Ollama Models
 

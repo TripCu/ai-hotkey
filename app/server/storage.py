@@ -1,0 +1,147 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import sqlite3
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = ROOT / "data"
+LOG_FILE = DATA_DIR / "ai_output.jsonl"
+DB_PATH = DATA_DIR / "ai_logs.db"
+
+logger = logging.getLogger("app.server.storage")
+
+
+def ensure_data_paths() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    (DATA_DIR / "tmp").mkdir(exist_ok=True)
+    legacy = DATA_DIR / "ai_output.txt"
+    if legacy.exists() and not LOG_FILE.exists():
+        legacy.rename(LOG_FILE)
+    LOG_FILE.touch(exist_ok=True)
+    _ensure_sqlite_schema()
+
+
+@dataclass
+class LogEntry:
+    id: str
+    created_at: datetime
+    backend: str
+    model: str
+    prompt: str
+    response: str
+    final_answer: Optional[str]
+    elapsed_ms: int
+    domain: Optional[str]
+    valid: Optional[bool]
+    validation: Optional[dict[str, Any]]
+
+
+async def persist(entry: LogEntry) -> None:
+    await asyncio.gather(
+        asyncio.to_thread(_write_jsonl, entry),
+        asyncio.to_thread(_safe_write_sqlite, entry),
+    )
+
+
+def _write_jsonl(entry: LogEntry) -> None:
+    payload = asdict(entry)
+    payload["created_at"] = entry.created_at.isoformat()
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with LOG_FILE.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+
+def _safe_write_sqlite(entry: LogEntry) -> None:
+    try:
+        _write_sqlite(entry)
+    except sqlite3.OperationalError as exc:
+        logger.warning("SQLite write failed (will continue with JSONL only): %s", exc)
+    except sqlite3.DatabaseError as exc:  # pragma: no cover
+        logger.warning("SQLite database error: %s", exc)
+
+
+def _write_sqlite(entry: LogEntry) -> None:
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS logs (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                backend TEXT NOT NULL,
+                model TEXT NOT NULL,
+                prompt TEXT NOT NULL,
+                response TEXT NOT NULL,
+                final_answer TEXT,
+                elapsed_ms INTEGER NOT NULL,
+                domain TEXT,
+                valid INTEGER,
+                validation TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO logs (
+                id,
+                created_at,
+                backend,
+                model,
+                prompt,
+                response,
+                final_answer,
+                elapsed_ms,
+                domain,
+                valid,
+                validation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entry.id,
+                entry.created_at.isoformat(),
+                entry.backend,
+                entry.model,
+                entry.prompt,
+                entry.response,
+                entry.final_answer,
+                entry.elapsed_ms,
+                entry.domain,
+                int(entry.valid) if isinstance(entry.valid, bool) else None,
+                json.dumps(entry.validation, ensure_ascii=False) if entry.validation else None,
+            ),
+        )
+        connection.commit()
+
+
+def _ensure_sqlite_schema() -> None:
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS logs (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                backend TEXT NOT NULL,
+                model TEXT NOT NULL,
+                prompt TEXT NOT NULL,
+                response TEXT NOT NULL,
+                final_answer TEXT,
+                elapsed_ms INTEGER NOT NULL,
+                domain TEXT,
+                valid INTEGER,
+                validation TEXT
+            )
+            """
+        )
+        columns = {row[1] for row in connection.execute("PRAGMA table_info('logs')")}
+        if "final_answer" not in columns:
+            connection.execute("ALTER TABLE logs ADD COLUMN final_answer TEXT")
+        if "validation" not in columns:
+            connection.execute("ALTER TABLE logs ADD COLUMN validation TEXT")
+        connection.commit()
