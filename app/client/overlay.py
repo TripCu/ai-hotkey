@@ -33,8 +33,8 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     root.attributes("-alpha", max(0.05, min(appearance.opacity, 1.0)))
 
     # Transparent background support varies; using a neutral background for stability.
-    background = "#001100"
-    foreground = "#39ff14"
+    background = "#000000"
+    foreground = "#ffffff"
 
     root.configure(bg=background)
     root.wm_attributes("-transparentcolor", background)
@@ -43,7 +43,7 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
         text=text,
         font=("Helvetica", 14),
         justify="right",
-        wraplength=appearance.width,
+        wraplength=max(200, appearance.width),
         bg=background,
         fg=foreground,
         padx=18,
@@ -56,10 +56,13 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     screen_height = root.winfo_screenheight()
     window_width = label.winfo_width()
     window_height = label.winfo_height()
-    x = screen_width - window_width - 20
+    if window_width + 40 > screen_width:
+        window_width = screen_width - 40
+        label.config(wraplength=window_width)
+        root.update_idletasks()
+        window_height = label.winfo_height()
+    x = max(0, screen_width - window_width - 20)
     y = 20
-    if x < 0:
-        x = 0
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
     if appearance.duration > 0:
@@ -161,7 +164,7 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             text_view.setSelectable_(False)
             text_view.setDrawsBackground_(False)
             text_view.setString_(text)
-            text_view.setTextColor_(NSColor.colorWithRed_green_blue_alpha_(0.22, 1.0, 0.08, 1.0))
+            text_view.setTextColor_(NSColor.whiteColor())
             text_view.setFont_(NSFont.systemFontOfSize_(16))
             text_view.setAlignment_(NSTextAlignmentRight)
             panel.contentView().addSubview_(text_view)
