@@ -17,8 +17,10 @@ function Resolve-Python {
 
     foreach ($candidate in $candidates) {
         $exe = $candidate[0]
-        $args = $candidate[1..($candidate.Count - 1)]
-        if ($args -eq $null) { $args = @() }
+        $args = @()
+        if ($candidate.Count -gt 1) {
+            $args = $candidate[1..($candidate.Count - 1)]
+        }
         try {
             $command = $args + @("-c", "import sys; print('.'.join(map(str, sys.version_info[:3])))")
             $output = & $exe @command 2>$null
@@ -32,7 +34,7 @@ function Resolve-Python {
             continue
         }
     }
-    throw "Python 3.9–3.12 is required. Install from https://www.python.org/downloads/windows/ before running this script."
+    throw "Python 3.9-3.12 is required. Install from https://www.python.org/downloads/windows/ before running this script."
 }
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path

@@ -38,9 +38,19 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
 
     root.configure(bg=background)
 
+    text_length = len(text)
+    if text_length > 800:
+        font_size = 12
+    elif text_length > 400:
+        font_size = 13
+    elif text_length > 200:
+        font_size = 14
+    else:
+        font_size = 16
+
     label = tk.Label(
         text=text,
-        font=("Helvetica", 14),
+        font=("Helvetica", font_size),
         justify="right",
         wraplength=max(200, appearance.width),
         bg=background,
@@ -58,6 +68,11 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     if window_width + 40 > screen_width:
         window_width = screen_width - 40
         label.config(wraplength=window_width)
+        root.update_idletasks()
+        window_height = label.winfo_height()
+    if window_height + 40 > screen_height:
+        window_height = screen_height - 40
+        label.config(wraplength=window_width - 20)
         root.update_idletasks()
         window_height = label.winfo_height()
     x = max(0, screen_width - window_width - 20)
@@ -136,6 +151,9 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             screen = NSScreen.mainScreen()
             if screen is not None:
                 frame = screen.visibleFrame()
+                max_width = max(200, frame.size.width - 40)
+                if width > max_width:
+                    width = max_width
                 x = frame.origin.x + frame.size.width - width - 20
                 y = frame.origin.y + frame.size.height - height - 20
             else:
@@ -164,8 +182,20 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             text_view.setDrawsBackground_(False)
             text_view.setString_(text)
             text_view.setTextColor_(NSColor.whiteColor())
-            text_view.setFont_(NSFont.systemFontOfSize_(16))
+            text_len = len(text)
+            if text_len > 800:
+                font_size = 12
+            elif text_len > 400:
+                font_size = 13
+            elif text_len > 200:
+                font_size = 14
+            else:
+                font_size = 16
+            text_view.setFont_(NSFont.systemFontOfSize_(font_size))
             text_view.setAlignment_(NSTextAlignmentRight)
+            text_view.setHorizontallyResizable_(False)
+            text_view.textContainer().setContainerSize_((width - 40, float("inf")))
+            text_view.textContainer().setWidthTracksTextView_(True)
             panel.contentView().addSubview_(text_view)
 
             panel.makeKeyAndOrderFront_(None)
