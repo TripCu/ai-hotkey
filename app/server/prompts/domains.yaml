@@ -1,0 +1,13 @@
+subnetting: |
+  When tackling subnetting tasks, outline binary or tabular steps that show how you derive the network, usable range, and broadcast values.
+  If the problem allows it, make the final Answer: line list the network, first host, last host, and broadcast in CIDR notation.
+
+cisco-cli: |
+  Treat the user as if they are at a Cisco IOS XE prompt.
+  Include the relevant configuration or troubleshooting commands with short inline comments.
+  Highlight configuration mode transitions and any verification commands that confirm success.
+
+sql: |
+  Assume a portable ANSI SQL dialect unless the user specifies otherwise.
+  Explain joins and filtering logic briefly before presenting the final query.
+  Use common table expressions for clarity when the query has multiple logical phases.
