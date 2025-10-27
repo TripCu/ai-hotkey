@@ -42,8 +42,6 @@ async def archive_response(
     final_answer: Optional[str],
     elapsed_ms: int,
     domain: Optional[str],
-    valid: Optional[bool],
-    validation: Optional[Dict],
     model: str,
 ) -> None:
     settings = get_settings()
@@ -57,8 +55,6 @@ async def archive_response(
         final_answer=final_answer,
         elapsed_ms=elapsed_ms,
         domain=domain,
-        valid=valid,
-        validation=validation,
     )
     await persist(log_entry)
 
@@ -82,4 +78,3 @@ async def generate_response(
         "final_answer": final_answer,
         "elapsed_ms": elapsed_ms,
     }
-

@@ -8,7 +8,7 @@ Trigger a local LLM with a global hotkey. `run.py` bootstraps everything: create
 - One-command startup (`python run.py`) across macOS, Windows, and Linux.
 - Neon floating overlay + console output, with configurable hotkeys (capture, clipboard paste, exit).
 - Context-aware prompting: merges recent chat history and relevant Markdown/Obsidian notes.
-- FastAPI backend with API-key auth, optional subnet validator, `/generate-with-image`, and pluggable Ollama/OpenAI backends.
+- FastAPI backend with API-key auth, `/generate-with-image`, and pluggable Ollama/OpenAI backends.
 - All paths are relative; move the folder anywhere and it still works.
 
 ## Repository Layout
@@ -35,8 +35,6 @@ ai-hotkey/
         domains.yaml
       services/
         generation.py
-      validators/
-        ip_network.py
 
   data/
     tmp/

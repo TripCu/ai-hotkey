@@ -62,16 +62,11 @@ def matches(binding: Tuple[str, Union[str, keyboard.Key]], key: Union[keyboard.K
 class PromptResult:
     response: str
     final_line: Optional[str]
-    validation_status: Optional[bool]
-    validation_payload: Optional[dict]
 
     def overlay_text(self) -> str:
         sections = [self.response.strip() or "<no response>"]
         if self.final_line:
             sections.append(self.final_line.strip())
-        if self.validation_status is not None:
-            status = "PASS" if self.validation_status else "FAIL"
-            sections.append(f"Validator: {status}")
         return "\n\n".join(filter(None, sections)).strip()
 
 
@@ -211,8 +206,6 @@ class HotkeyClient:
         return PromptResult(
             response=data.get("response", "<no response>"),
             final_line=final_line,
-            validation_status=data.get("valid"),
-            validation_payload=data.get("validation"),
         )
 
     def _print_to_console(self, result: PromptResult) -> None:
@@ -220,11 +213,6 @@ class HotkeyClient:
         print(result.response)
         if result.final_line:
             print(result.final_line)
-        if result.validation_status is not None:
-            status = "PASS" if result.validation_status else "FAIL"
-            print(f"Validator: {status}")
-            if isinstance(result.validation_payload, dict):
-                print(json.dumps(result.validation_payload, indent=2))
         print("-------------------------------------------------------\n")
 
     def _show_overlay(self, result: PromptResult) -> None:

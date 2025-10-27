@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
@@ -38,8 +38,6 @@ class LogEntry:
     final_answer: Optional[str]
     elapsed_ms: int
     domain: Optional[str]
-    valid: Optional[bool]
-    validation: Optional[dict[str, Any]]
 
 
 async def persist(entry: LogEntry) -> None:
@@ -103,9 +101,7 @@ def _write_sqlite(entry: LogEntry) -> None:
                 response TEXT NOT NULL,
                 final_answer TEXT,
                 elapsed_ms INTEGER NOT NULL,
-                domain TEXT,
-                valid INTEGER,
-                validation TEXT
+                domain TEXT
             )
             """
         )
@@ -120,10 +116,8 @@ def _write_sqlite(entry: LogEntry) -> None:
                 response,
                 final_answer,
                 elapsed_ms,
-                domain,
-                valid,
-                validation
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                domain
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry.id,
@@ -135,8 +129,6 @@ def _write_sqlite(entry: LogEntry) -> None:
                 entry.final_answer,
                 entry.elapsed_ms,
                 entry.domain,
-                int(entry.valid) if isinstance(entry.valid, bool) else None,
-                json.dumps(entry.validation, ensure_ascii=False) if entry.validation else None,
             ),
         )
         connection.commit()
@@ -156,15 +148,11 @@ def _ensure_sqlite_schema() -> None:
                 response TEXT NOT NULL,
                 final_answer TEXT,
                 elapsed_ms INTEGER NOT NULL,
-                domain TEXT,
-                valid INTEGER,
-                validation TEXT
+                domain TEXT
             )
             """
         )
         columns = {row[1] for row in connection.execute("PRAGMA table_info('logs')")}
         if "final_answer" not in columns:
             connection.execute("ALTER TABLE logs ADD COLUMN final_answer TEXT")
-        if "validation" not in columns:
-            connection.execute("ALTER TABLE logs ADD COLUMN validation TEXT")
         connection.commit()

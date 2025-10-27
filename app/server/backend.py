@@ -56,24 +56,6 @@ async def verify_api_key(x_api_key: Optional[str] = Header(default=None, alias="
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
 
 
-def run_validator(domain: Optional[str], final_line: Optional[str]) -> tuple[Optional[bool], Optional[dict]]:
-    if domain != "subnetting":
-        return None, None
-    if not final_line:
-        return False, {"reason": "Final answer missing for subnetting validation."}
-    try:
-        from app.server.validators.ip_network import validate_answer
-    except Exception as exc:  # pragma: no cover
-        logger.warning("Unable to load subnet validator: %s", exc)
-        return False, {"reason": "Validator unavailable."}
-    try:
-        result = validate_answer(final_line)
-    except Exception as exc:  # pragma: no cover
-        logger.exception("Subnet validator raised an error: %s", exc)
-        return False, {"reason": "Validator error"}
-    return bool(result.get("ok")), result
-
-
 async def append_ocr_context(files: Optional[List[UploadFile]]) -> tuple[str, List[str]]:
     if not files:
         return "", []
@@ -224,7 +206,6 @@ async def _handle_generation(payload: GenerationPayload, http_request: Optional[
         logger.exception("LLM request failed")
         raise HTTPException(status_code=502, detail=f"Upstream request failed: {exc}") from exc
 
-    valid, validation = run_validator(domain, result["final_answer"])
     await archive_response(
         request_id=result["id"],
         prompt=payload.prompt,
@@ -232,15 +213,11 @@ async def _handle_generation(payload: GenerationPayload, http_request: Optional[
         final_answer=result["final_answer"],
         elapsed_ms=result["elapsed_ms"],
         domain=domain,
-        valid=valid,
-        validation=validation,
         model=result["model"],
     )
 
     payload = {
         "status": "ok",
         **result,
-        "valid": valid,
-        "validation": validation,
     }
     return JSONResponse(content=payload)
