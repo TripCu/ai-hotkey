@@ -1,2 +1,40 @@
+# Python bytecode
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Distribution/packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs & data artifacts
+data/ai_output.jsonl
+data/ai_logs.db
+data/tmp/
+*.log
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Environment/config (local overrides)
+.env.local
+*.pid
+
+# Coverage & testing
+htmlcov/
+.coverage
+*.cover
+

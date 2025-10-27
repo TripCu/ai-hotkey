@@ -62,8 +62,9 @@ The script will create `.venv/`, install dependencies, attempt to install Ollama
 1. Focus any window where you can type text.
 2. Press the start key (` by default) to begin capture.
 3. Type your prompt and press Enter.
-4. The full response appears both in the console and in a floating overlay window (click or press Esc on the overlay to dismiss). The overlay auto-hides after the configured timeout.
-5. Press the exit key (ESC by default) to stop the listener and shut everything down gracefully.
+4. To paste from the clipboard instantly, press `CLIPBOARD_KEY` (default `\`) and the listener will send the clipboard contents without typing.
+5. The full response appears both in the console and in a floating overlay window (click or press Esc on the overlay to dismiss). The overlay auto-hides after the configured timeout.
+6. Press the exit key (ESC by default) to stop the listener and shut everything down gracefully.
 
 All prompts and responses are appended (one JSON object per line) to `data/ai_output.jsonl` and stored in SQLite (`data/ai_logs.db`).
 
@@ -88,6 +89,8 @@ Install a model by running `ollama pull <model-name>`. Update `.env` `OLLAMA_MOD
   - `OVERLAY_DURATION` in seconds before auto-dismiss (default `15`)
   - `OVERLAY_OPACITY` between `0` and `1`
   - `OVERLAY_WIDTH` in pixels for text wrapping
+- Clipboard shortcut:
+  - `CLIPBOARD_KEY` (default `\`) sends whatever is on the clipboard straight to the model.
 
 You can override the default model per request by including `"model": "..."` in the JSON payload.
 

@@ -36,6 +36,7 @@ class ClientConfig:
     api_key: str
     start_key: str
     exit_key: str
+    clipboard_key: str
     question_domain: str
     overlay_enabled: bool
     overlay_duration: float
@@ -51,10 +52,10 @@ def load_client_config() -> ClientConfig:
         api_key=data.get("API_KEY", "local-dev-key"),
         start_key=data.get("START_KEY", "`"),
         exit_key=data.get("EXIT_KEY", "ESC"),
+        clipboard_key=data.get("CLIPBOARD_KEY", "\\"),
         question_domain=(data.get("QUESTION_DOMAIN") or "").strip(),
         overlay_enabled=_bool(data.get("OVERLAY_ENABLED"), True),
         overlay_duration=_float(data.get("OVERLAY_DURATION"), 15.0),
         overlay_opacity=_float(data.get("OVERLAY_OPACITY"), 0.9),
         overlay_width=_int(data.get("OVERLAY_WIDTH"), 480),
     )
-

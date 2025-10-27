@@ -49,6 +49,29 @@ async def persist(entry: LogEntry) -> None:
     )
 
 
+def clear_logs() -> None:
+    if LOG_FILE.exists():
+        LOG_FILE.unlink()
+    if DB_PATH.exists():
+        DB_PATH.unlink()
+    ensure_data_paths()
+
+
+def get_recent_entries(limit: int = 5) -> list[dict[str, str]]:
+    if not DB_PATH.exists():
+        return []
+    results: list[dict[str, str]] = []
+    with sqlite3.connect(DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            "SELECT prompt, response FROM logs ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        for row in reversed(rows):
+            results.append({"prompt": row["prompt"], "response": row["response"]})
+    return results
+
+
 def _write_jsonl(entry: LogEntry) -> None:
     payload = asdict(entry)
     payload["created_at"] = entry.created_at.isoformat()

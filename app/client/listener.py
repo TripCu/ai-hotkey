@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
 import requests
+import pyperclip
+from pyperclip import PyperclipException
 from pynput import keyboard
 
 from app.client.config import ClientConfig, load_client_config
@@ -21,15 +23,23 @@ SPECIAL_KEYS = {
     "SPACE": keyboard.Key.space,
     "TAB": keyboard.Key.tab,
     "BACKSPACE": keyboard.Key.backspace,
+    "BACKSLASH": getattr(keyboard.Key, "backslash", None),
 }
 
 
+def _decode_token(token: str) -> str:
+    try:
+        return bytes(token, "utf-8").decode("unicode_escape")
+    except Exception:
+        return token
+
+
 def parse_binding(token: str) -> Tuple[str, Union[str, keyboard.Key]]:
-    token = (token or "").strip()
+    token = _decode_token((token or "").strip())
     if not token:
         raise ValueError("Key binding must not be empty")
     upper = token.upper()
-    if upper in SPECIAL_KEYS:
+    if upper in SPECIAL_KEYS and SPECIAL_KEYS[upper] is not None:
         return "special", SPECIAL_KEYS[upper]
     if upper.startswith("F") and upper[1:].isdigit():
         key_attr = upper.lower()
@@ -74,6 +84,7 @@ class HotkeyClient:
         self.running = True
         self.start_binding = parse_binding(config.start_key)
         self.exit_binding = parse_binding(config.exit_key)
+        self.clipboard_binding = parse_binding(config.clipboard_key)
         self._session = requests.Session()
         self.worker = threading.Thread(target=self._worker_loop, daemon=True)
         self.worker.start()
@@ -92,6 +103,22 @@ class HotkeyClient:
             print("Exit key detected. Quitting listener.")
             self.stop()
             return False
+
+        if matches(self.clipboard_binding, key):
+            try:
+                clip_text = (pyperclip.paste() or "").strip()
+            except PyperclipException as exc:
+                print(f"[client] Clipboard read failed: {exc}")
+                return True
+            if clip_text:
+                preview = clip_text if len(clip_text) <= 80 else clip_text[:77] + "..."
+                print(f"\n[client] Sending clipboard: {preview}")
+                self.collecting = False
+                self.buffer.clear()
+                self.queue.put(clip_text)
+            else:
+                print("[client] Clipboard is empty; nothing to send.")
+            return True
 
         if not self.collecting:
             if matches(self.start_binding, key):

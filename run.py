@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import errno
 import os
 import platform
 import shutil
@@ -15,6 +16,8 @@ from typing import Dict, Optional
 from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen, urlretrieve
+
+from app.server.storage import clear_logs
 
 ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
@@ -235,9 +238,25 @@ def ensure_ollama_running(env: Dict[str, str]) -> Optional[subprocess.Popen]:
     return proc
 
 
-def start_backend(python_executable: Path, env: Dict[str, str]) -> subprocess.Popen:
+def backend_available(env: Dict[str, str]) -> bool:
     host = env.get("HOST", "127.0.0.1")
     port = env.get("PORT", "8000")
+    url = f"http://{host}:{port}/status"
+    try:
+        with urlopen(Request(url), timeout=3.0) as response:
+            return response.getcode() == 200
+    except URLError:
+        return False
+
+
+def start_backend(python_executable: Path, env: Dict[str, str]) -> Optional[subprocess.Popen]:
+    host = env.get("HOST", "127.0.0.1")
+    port = env.get("PORT", "8000")
+
+    if backend_available(env):
+        print(f"Backend already running on {host}:{port}, reusing existing instance.")
+        return None
+
     cmd = [
         str(python_executable),
         "-m",
@@ -252,12 +271,19 @@ def start_backend(python_executable: Path, env: Dict[str, str]) -> subprocess.Po
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     child_env = {**os.environ, **env}
     child_env["PYTHONPATH"] = f"{ROOT}{os.pathsep}" + child_env.get("PYTHONPATH", "")
-    return subprocess.Popen(
-        cmd,
-        cwd=str(ROOT),
-        env=child_env,
-        creationflags=creationflags,
-    )
+    try:
+        return subprocess.Popen(
+            cmd,
+            cwd=str(ROOT),
+            env=child_env,
+            creationflags=creationflags,
+        )
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            raise RuntimeError(
+                f"Port {port} is already in use. Stop the existing service on that port or update HOST/PORT in .env."
+            ) from exc
+        raise
 
 
 def wait_for_status(
@@ -323,14 +349,14 @@ def main() -> int:
         raise FileNotFoundError(f"Virtual environment Python not found at {python_executable}")
 
     install_dependencies(python_executable)
+    clear_logs()
     ensure_ollama_installed(env_values)
     ollama_proc: Optional[subprocess.Popen] = ensure_ollama_running(env_values)
     ensure_ollama_model(env_values)
-    backend_proc: Optional[subprocess.Popen] = None
+    backend_proc: Optional[subprocess.Popen] = start_backend(python_executable, env_values)
     listener_proc: Optional[subprocess.Popen] = None
 
     try:
-        backend_proc = start_backend(python_executable, env_values)
         wait_for_status(
             env_values.get("HOST", "127.0.0.1"),
             env_values.get("PORT", "8000"),
@@ -341,7 +367,7 @@ def main() -> int:
 
         while True:
             time.sleep(1.0)
-            if backend_proc.poll() is not None:
+            if backend_proc is not None and backend_proc.poll() is not None:
                 raise RuntimeError("Backend process exited unexpectedly.")
             if listener_proc.poll() is not None:
                 print("Listener stopped, shutting down backend...")

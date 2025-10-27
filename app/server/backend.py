@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - optional dependency
 from app.server.config import get_settings
 from app.server.prompts_loader import load_base_prompt, load_domain_prompts
 from app.server.services.generation import archive_response, generate_response
-from app.server.storage import ensure_data_paths
+from app.server.storage import ensure_data_paths, get_recent_entries
 
 logger = logging.getLogger("app.server.backend")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
@@ -161,9 +161,24 @@ async def _handle_generation(request: GenerationPayload) -> JSONResponse:
         domain = SETTINGS.question_domain
     system_prompt = compose_system_prompt(domain)
 
+    history_entries = get_recent_entries(limit=5)
+    if history_entries:
+        history_blocks = [
+            f"User: {item['prompt'].strip()}\nAssistant: {item['response'].strip()}"
+            for item in history_entries
+        ]
+        prompt_body = (
+            "Here is the recent conversation history between the user and assistant:\n"
+            + "\n\n".join(history_blocks)
+            + "\n\nRespond to the user's latest request while referencing the prior context when helpful:\n"
+            + request.prompt.strip()
+        )
+    else:
+        prompt_body = request.prompt
+
     try:
         result = await generate_response(
-            prompt=request.prompt,
+            prompt=prompt_body,
             system_prompt=system_prompt,
             domain=domain,
             model_override=request.model,

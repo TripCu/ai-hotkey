@@ -33,22 +33,22 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     root.attributes("-alpha", max(0.05, min(appearance.opacity, 1.0)))
 
     # Transparent background support varies; using a neutral background for stability.
-    background = "#202124"
-    foreground = "#f1f3f4"
+    background = "#ffffff"
+    foreground = "#000000"
 
     frame = tk.Frame(root, bg=background, padx=18, pady=18)
-    frame.pack()
+    frame.pack(anchor="ne")
 
     label = tk.Label(
         frame,
         text=text,
         font=("Helvetica", 14),
-        justify="left",
+        justify="right",
         wraplength=appearance.width,
         bg=background,
         fg=foreground,
     )
-    label.pack()
+    label.pack(anchor="ne")
 
     screen_width = root.winfo_screenwidth()
     x = max(20, screen_width - appearance.width - 80)
@@ -88,6 +88,7 @@ def show_overlay(text: str, appearance: OverlayAppearance) -> mp.Process | None:
 
 def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
     try:
+        import objc
         from AppKit import (
             NSApp,
             NSApplication,
@@ -111,7 +112,7 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
 
     class OverlayController(NSObject):
         def init(self):
-            self = super().init()
+            self = objc.super(OverlayController, self).init()
             if self is None:
                 return None
             self.panel = None
@@ -156,7 +157,8 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             text_view.setFont_(NSFont.systemFontOfSize_(16))
             panel.contentView().addSubview_(text_view)
 
-            panel.orderFrontRegardless()
+            panel.makeKeyAndOrderFront_(None)
+            app.activateIgnoringOtherApps_(True)
             self.panel = panel
 
             if appearance.duration > 0:
