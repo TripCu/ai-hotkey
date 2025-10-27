@@ -9,5 +9,7 @@ python-multipart==0.0.*
 PyYAML==6.*
 Pillow==10.*          # only needed when you later enable OCR/image endpoint
 pytesseract==0.3.*    # optional (if you install Tesseract on target machine)
+# opencv-python==4.*   # optional (useful for improved OCR preprocessing)
 pyperclip==1.9.*
 psutil==6.*
+pyautogui==0.9.*       # optional (screenshots on Windows/Linux)

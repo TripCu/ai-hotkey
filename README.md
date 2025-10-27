@@ -54,6 +54,7 @@ ai-hotkey/
   - Windows installers **must** use Python 3.9–3.12 (Pillow wheels are not yet available for 3.13/3.14 on Windows).
 - Ollama (auto-installed on macOS/Linux; Windows uses the official installer run by `run.py`)
 - Optional: Tesseract OCR binary for `/generate-with-image`
+- Optional: OpenCV (`opencv-python`) for improved OCR preprocessing
 
 ## Quick Start
 
