@@ -33,27 +33,31 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     root.attributes("-alpha", max(0.05, min(appearance.opacity, 1.0)))
 
     # Transparent background support varies; using a neutral background for stability.
-    background = "#ffffff"
-    foreground = "#000000"
-
-    frame = tk.Frame(root, bg=background, padx=18, pady=18)
-    frame.pack(anchor="ne")
+    background = "#001100"
+    foreground = "#39ff14"
 
     label = tk.Label(
-        frame,
         text=text,
         font=("Helvetica", 14),
         justify="right",
         wraplength=appearance.width,
         bg=background,
         fg=foreground,
+        padx=18,
+        pady=18,
     )
     label.pack(anchor="ne")
 
+    root.update_idletasks()
     screen_width = root.winfo_screenwidth()
-    x = max(20, screen_width - appearance.width - 80)
-    y = 60
-    root.geometry(f"+{x}+{y}")
+    screen_height = root.winfo_screenheight()
+    window_width = label.winfo_width()
+    window_height = label.winfo_height()
+    x = screen_width - window_width - 20
+    y = 20
+    if x < 0:
+        x = 0
+    root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
     if appearance.duration > 0:
         root.after(int(appearance.duration * 1000), root.destroy)
@@ -103,6 +107,7 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             NSWindowCollectionBehaviorCanJoinAllSpaces,
             NSWindowCollectionBehaviorFullScreenAuxiliary,
             NSStatusWindowLevel,
+            NSTextAlignmentRight,
         )
         from Foundation import NSObject, NSTimer
         from PyObjCTools import AppHelper
@@ -126,10 +131,10 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             screen = NSScreen.mainScreen()
             if screen is not None:
                 frame = screen.visibleFrame()
-                x = frame.origin.x + frame.size.width - width - 60
-                y = frame.origin.y + frame.size.height - height - 80
+                x = frame.origin.x + frame.size.width - width - 20
+                y = frame.origin.y + frame.size.height - height - 20
             else:
-                x, y = 100, 100
+                x, y = 40, 40
 
             panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
                 NSMakeRect(x, y, width, height),
@@ -151,10 +156,12 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             text_view = NSTextView.alloc().initWithFrame_(NSMakeRect(20, 20, width - 40, height - 40))
             text_view.setEditable_(False)
             text_view.setSelectable_(False)
-            text_view.setDrawsBackground_(False)
+            text_view.setDrawsBackground_(True)
+            text_view.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.003, 0.07, 0.003, 1.0))
             text_view.setString_(text)
-            text_view.setTextColor_(NSColor.whiteColor())
+            text_view.setTextColor_(NSColor.colorWithRed_green_blue_alpha_(0.22, 1.0, 0.08, 1.0))
             text_view.setFont_(NSFont.systemFontOfSize_(16))
+            text_view.setAlignment_(NSTextAlignmentRight)
             panel.contentView().addSubview_(text_view)
 
             panel.makeKeyAndOrderFront_(None)
