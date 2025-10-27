@@ -36,6 +36,9 @@ def _render_overlay(text: str, appearance: OverlayAppearance) -> None:
     background = "#001100"
     foreground = "#39ff14"
 
+    root.configure(bg=background)
+    root.wm_attributes("-transparentcolor", background)
+
     label = tk.Label(
         text=text,
         font=("Helvetica", 14),
@@ -156,8 +159,7 @@ def _render_overlay_macos(text: str, appearance: OverlayAppearance) -> bool:
             text_view = NSTextView.alloc().initWithFrame_(NSMakeRect(20, 20, width - 40, height - 40))
             text_view.setEditable_(False)
             text_view.setSelectable_(False)
-            text_view.setDrawsBackground_(True)
-            text_view.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.003, 0.07, 0.003, 1.0))
+            text_view.setDrawsBackground_(False)
             text_view.setString_(text)
             text_view.setTextColor_(NSColor.colorWithRed_green_blue_alpha_(0.22, 1.0, 0.08, 1.0))
             text_view.setFont_(NSFont.systemFontOfSize_(16))

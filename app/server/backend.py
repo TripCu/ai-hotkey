@@ -22,6 +22,7 @@ from app.server.config import get_settings
 from app.server.prompts_loader import load_base_prompt, load_domain_prompts
 from app.server.services.generation import archive_response, generate_response
 from app.server.storage import ensure_data_paths, get_recent_entries
+from app.server.notes import gather_relevant_notes
 
 logger = logging.getLogger("app.server.backend")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
@@ -162,19 +163,33 @@ async def _handle_generation(request: GenerationPayload) -> JSONResponse:
     system_prompt = compose_system_prompt(domain)
 
     history_entries = get_recent_entries(limit=5)
+    history_section = ""
     if history_entries:
         history_blocks = [
             f"User: {item['prompt'].strip()}\nAssistant: {item['response'].strip()}"
             for item in history_entries
         ]
-        prompt_body = (
+        history_section = (
             "Here is the recent conversation history between the user and assistant:\n"
             + "\n\n".join(history_blocks)
-            + "\n\nRespond to the user's latest request while referencing the prior context when helpful:\n"
-            + request.prompt.strip()
+            + "\n\n"
         )
-    else:
-        prompt_body = request.prompt
+
+    notes_section = ""
+    notes_snippets = gather_relevant_notes(request.prompt)
+    if notes_snippets:
+        notes_section = (
+            "Relevant notes extracted from the knowledge base:\n"
+            + "\n\n".join(notes_snippets)
+            + "\n\n"
+        )
+
+    prompt_body = (
+        history_section
+        + notes_section
+        + "Respond to the user's latest request while referencing prior context when helpful:\n"
+        + request.prompt.strip()
+    )
 
     try:
         result = await generate_response(

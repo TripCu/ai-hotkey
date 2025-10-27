@@ -91,6 +91,8 @@ Install a model by running `ollama pull <model-name>`. Update `.env` `OLLAMA_MOD
   - `OVERLAY_WIDTH` in pixels for text wrapping
 - Clipboard shortcut:
   - `CLIPBOARD_KEY` (default `\`) sends whatever is on the clipboard straight to the model.
+- Notes integration:
+  - `NOTES_PATH` (optional) can point to a folder containing Obsidian/Markdown notes. The backend will surface the most relevant snippets in each prompt to improve contextual answers.
 
 You can override the default model per request by including `"model": "..."` in the JSON payload.
 

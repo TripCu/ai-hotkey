@@ -24,6 +24,7 @@ class Settings(BaseModel):
     host: str = Field(default="127.0.0.1", alias="HOST")
     port: PositiveInt = Field(default=8000, alias="PORT")
     question_domain: str = Field(default="", alias="QUESTION_DOMAIN")
+    notes_path: Optional[str] = Field(default=None, alias="NOTES_PATH")
 
     model_config = {"populate_by_name": True, "extra": "ignore"}
 
@@ -34,6 +35,10 @@ class Settings(BaseModel):
             raise ValueError("AI_BACKEND must be 'ollama' or 'openai_compatible'")
         self.ai_backend = backend
         self.question_domain = self.question_domain.strip()
+        if self.notes_path:
+            self.notes_path = self.notes_path.strip()
+            if not self.notes_path:
+                self.notes_path = None
         return self
 
 
@@ -48,4 +53,3 @@ def get_settings() -> Settings:
         return Settings.model_validate(raw)
     except ValidationError as exc:  # pragma: no cover
         raise RuntimeError(f"Invalid configuration: {exc}") from exc
-
