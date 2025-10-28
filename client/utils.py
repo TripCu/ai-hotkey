@@ -3,8 +3,8 @@ from __future__ import annotations
 import platform
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
-from typing import Optional
 
 
 class ScreenshotError(RuntimeError):
@@ -18,7 +18,7 @@ def capture_screenshot(prefix: str = "screenshot") -> Path:
 
     tmp_dir = Path(tempfile.gettempdir())
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    output_path = tmp_dir / f"{prefix}-{next(tempfile._get_candidate_names())}.png"  # type: ignore[attr-defined]
+    output_path = tmp_dir / f"{prefix}-{uuid.uuid4().hex}.png"
 
     try:
         if system == "darwin":
@@ -30,19 +30,34 @@ def capture_screenshot(prefix: str = "screenshot") -> Path:
                 str(output_path),
             ], check=True)
         elif system == "windows":
-            from PIL import ImageGrab  # type: ignore[import-untyped]
-
-            image = ImageGrab.grab()
+            try:
+                import pyautogui  # type: ignore[import-untyped]
+            except ImportError:
+                try:
+                    from PIL import ImageGrab  # type: ignore[import-untyped]
+                except ImportError as exc:  # pragma: no cover - optional dep
+                    raise ScreenshotError("Install Pillow or pyautogui for screenshot support on Windows.") from exc
+                image = ImageGrab.grab()
+            else:
+                image = pyautogui.screenshot()
             image.save(output_path, format="PNG")
         else:
             try:
-                subprocess.run([
-                    "scrot",
-                    "-s",
-                    str(output_path),
-                ], check=True)
-            except FileNotFoundError:
-                raise ScreenshotError("scrot not installed. Install it or configure a custom capture command.")
+                import pyautogui  # type: ignore[import-untyped]
+            except ImportError:
+                try:
+                    subprocess.run([
+                        "scrot",
+                        "-s",
+                        str(output_path),
+                    ], check=True)
+                except FileNotFoundError:
+                    raise ScreenshotError(
+                        "Install pyautogui or scrot to enable screenshot capture on this platform."
+                    )
+            else:
+                image = pyautogui.screenshot()
+                image.save(output_path, format="PNG")
     except Exception as exc:
         raise ScreenshotError(f"Failed to capture screenshot: {exc}")
 

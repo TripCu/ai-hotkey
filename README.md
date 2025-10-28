@@ -1,12 +1,13 @@
 # AI Hotkey Assistant
 
-Trigger a local LLM with a global hotkey. `run.py` bootstraps everything: creates a virtual environment, installs dependencies, ensures Ollama is installed, launches the backend, and starts the listener plus overlay. The backend can also call an OpenAI-compatible endpoint, performs optional OCR, and enriches prompts with recent chat history and Markdown notes.
+Trigger a local LLM with a global hotkey. `run.py` bootstraps everything: creates a virtual environment, installs dependencies, ensures Ollama is installed, launches the backend, and starts the listener plus overlay. The backend can also call an OpenAI-compatible endpoint, analyze images with a vision model, and enrich prompts with recent chat history and Markdown notes.
 
 ---
 
 ## Highlights
 - One-command startup (`python run.py`) across macOS, Windows, and Linux.
 - Neon floating overlay + console output, with configurable hotkeys (capture, clipboard paste, exit).
+- Screenshot hotkey captures images and sends them straight to a vision-enabled model.
 - Context-aware prompting: merges recent chat history and relevant Markdown/Obsidian notes.
 - FastAPI backend with API-key auth, `/generate-with-image`, and pluggable Ollama/OpenAI backends.
 - All paths are relative; move the folder anywhere and it still works.
@@ -53,8 +54,7 @@ ai-hotkey/
 - Python 3.9+
   - Windows installers **must** use Python 3.9–3.12 (Pillow wheels are not yet available for 3.13/3.14 on Windows).
 - Ollama (auto-installed on macOS/Linux; Windows uses the official installer run by `run.py`)
-- Optional: Tesseract OCR binary for `/generate-with-image`
-- Optional: OpenCV (`opencv-python`) for improved OCR preprocessing
+- Optional: pyautogui for cross-platform screenshot capture (Linux/Windows)
 
 ## Quick Start
 
@@ -123,8 +123,9 @@ First launch may prompt for admin rights (Ollama install) and will download the 
 ## Hotkeys & Overlay
 1. Press the start key (default backtick `) to begin capture.
 2. Type your prompt and hit Enter — or press the clipboard key (default `\`) to send your clipboard instantly.
-3. Responses appear in the terminal and in a neon overlay pinned to the top‑right. Click or press Esc to dismiss; it auto-hides after `OVERLAY_DURATION` seconds.
-4. Press the exit key (default `ESC`) to stop the listener and shut everything down.
+3. Press the screenshot key (default `]`) to capture a region and send it straight to the vision model.
+4. Responses appear in the terminal and in a neon overlay pinned to the top‑right. Click or press Esc to dismiss; it auto-hides after `OVERLAY_DURATION` seconds.
+5. Press the exit key (default `ESC`) to stop the listener and shut everything down.
 
 ## Configuration (`.env`)
 | Key | Description |
@@ -132,12 +133,16 @@ First launch may prompt for admin rights (Ollama install) and will download the 
 | `AI_BACKEND` | `ollama` (default) or `openai_compatible` |
 | `OLLAMA_MODEL` | Model tag to pull/use (default `llama3.1:8b`) |
 | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | Set when using an OpenAI-compatible backend |
+| `OLLAMA_VISION_MODEL`, `OPENAI_VISION_MODEL` | Optional vision-capable models |
 | `HOST`, `PORT` | Backend bind host/port |
 | `API_KEY` | Required `x-api-key` header value |
 | `START_KEY`, `EXIT_KEY`, `CLIPBOARD_KEY` | Hotkeys for capture/exit/clipboard |
+| `SCREENSHOT_KEY` | Hotkey for screenshot capture (default `]`) |
+| `SCREENSHOT_PROMPT` | Prompt used when sending a screenshot |
 | `OVERLAY_ENABLED`, `OVERLAY_DURATION`, `OVERLAY_OPACITY`, `OVERLAY_WIDTH` | Overlay settings |
 | `QUESTION_DOMAIN` | Optional domain hint (e.g., `networking`) |
 | `NOTES_PATH` | Relative or absolute folder containing Markdown notes |
+| `VISION_ENABLED` | Set to `1`/`true` to send raw images to vision-capable models |
 
 All prompts/responses are logged locally (JSONL + SQLite) in `backend/data/`. Each run wipes previous logs, so every session is clean. 
 
@@ -148,8 +153,10 @@ Add Markdown files to `notes/` (or point `NOTES_PATH` elsewhere). The backend sc
 - **Ollama**: default. `run.py` will attempt to install/start Ollama if needed and pull the configured model.
 - **OpenAI-compatible**: set `AI_BACKEND=openai_compatible` and supply base URL, API key, and model in `.env`.
 
-## Image Notes
-`POST /generate-with-image` accepts multipart uploads (prompt + images). If Pillow + pytesseract + Tesseract OCR are available, the backend extracts text from the images and appends it to the prompt; otherwise it returns a response noting OCR is unavailable.
+## Image Notes & Vision Models
+- `POST /generate-with-image` accepts multipart uploads (prompt + images). When `VISION_ENABLED=1`, the raw images are passed to the configured vision-capable model for analysis.
+- Configure `OPENAI_VISION_MODEL` (e.g., `gpt-4o`) or `OLLAMA_VISION_MODEL` (e.g., `llava:13b`) depending on which backend you use.
+- The listener’s screenshot hotkey (`]`) automatically attaches the capture so the model can reason about diagrams, photos, or slides.
 
 ## Security Notice
 The listener installs a global keyboard hook; run it only on trusted machines and disable it when entering sensitive information. No data leaves your machine unless your chosen backend sends prompts to a remote service.

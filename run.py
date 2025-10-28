@@ -40,6 +40,12 @@ def parse_env_file(path: Path) -> Dict[str, str]:
     return env
 
 
+def apply_env_defaults(env: Dict[str, str]) -> None:
+    env.setdefault("OLLAMA_MODEL", "llama3.1:8b")
+    env.setdefault("OLLAMA_VISION_MODEL", "llava:13b")
+    env.setdefault("VISION_ENABLED", "1")
+
+
 def ensure_venv(venv_dir: Path) -> None:
     if venv_dir.exists():
         return
@@ -343,6 +349,7 @@ def terminate_process(proc: Optional[subprocess.Popen], name: str) -> None:
 
 def main() -> int:
     env_values = parse_env_file(ENV_FILE)
+    apply_env_defaults(env_values)
     ensure_venv(VENV_DIR)
     python_executable = venv_python(VENV_DIR)
     if not python_executable.exists():

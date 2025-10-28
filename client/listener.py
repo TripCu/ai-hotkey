@@ -1,5 +1,7 @@
+
 from __future__ import annotations
 
+import base64
 import json
 import queue
 import threading
@@ -14,6 +16,7 @@ from pynput import keyboard
 
 from client.config import ClientConfig, load_client_config
 from client.overlay import OverlayAppearance, show_overlay
+from client.utils import ScreenshotError, capture_screenshot
 
 
 SPECIAL_KEYS = {
@@ -75,11 +78,12 @@ class HotkeyClient:
         self.config = config
         self.collecting = False
         self.buffer: list[str] = []
-        self.queue: "queue.Queue[str]" = queue.Queue()
+        self.queue: "queue.Queue[Optional[dict]]" = queue.Queue()
         self.running = True
         self.start_binding = parse_binding(config.start_key)
         self.exit_binding = parse_binding(config.exit_key)
         self.clipboard_binding = parse_binding(config.clipboard_key)
+        self.screenshot_binding = parse_binding(config.screenshot_key)
         self._session = requests.Session()
         self.worker = threading.Thread(target=self._worker_loop, daemon=True)
         self.worker.start()
@@ -87,9 +91,44 @@ class HotkeyClient:
     def stop(self) -> None:
         self.running = False
         try:
-            self.queue.put_nowait("")
+            self.queue.put_nowait(None)
         except queue.Full:
             pass
+
+    def _build_base_payload(self, prompt: str) -> dict:
+        payload = {"prompt": prompt, "context": {}}
+        if self.config.question_domain:
+            payload["context"]["question_type"] = self.config.question_domain
+        return payload
+
+    def _handle_screenshot(self) -> None:
+        try:
+            path = capture_screenshot()
+        except ScreenshotError as exc:
+            print(f"[client] Screenshot failed: {exc}")
+            return
+
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            print(f"[client] Unable to read screenshot: {exc}")
+            return
+        finally:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+        if not data:
+            print("[client] Screenshot was empty; nothing sent.")
+            return
+
+        encoded = base64.b64encode(data).decode("ascii")
+        payload = self._build_base_payload(self.config.screenshot_prompt)
+        payload["images"] = [encoded]
+        payload["prompt_prefix"] = "Screenshot captured via hotkey."
+        print("\n[client] Screenshot captured; sending to backend.")
+        self.queue.put(payload)
 
     # Listener callbacks --------------------------------------------------
 
@@ -98,6 +137,10 @@ class HotkeyClient:
             print("Exit key detected. Quitting listener.")
             self.stop()
             return False
+
+        if matches(self.screenshot_binding, key):
+            self._handle_screenshot()
+            return True
 
         if matches(self.clipboard_binding, key):
             try:
@@ -110,7 +153,8 @@ class HotkeyClient:
                 print(f"\n[client] Sending clipboard: {preview}")
                 self.collecting = False
                 self.buffer.clear()
-                self.queue.put(clip_text)
+                payload = self._build_base_payload(clip_text)
+                self.queue.put(payload)
             else:
                 print("[client] Clipboard is empty; nothing to send.")
             return True
@@ -132,7 +176,8 @@ class HotkeyClient:
             if text:
                 preview = text if len(text) <= 80 else text[:77] + "..."
                 print(f"\n[client] Sending prompt: {preview}")
-                self.queue.put(text)
+                payload = self._build_base_payload(text)
+                self.queue.put(payload)
             else:
                 print("Prompt was empty, ignoring.")
             return True
@@ -166,18 +211,14 @@ class HotkeyClient:
     def _worker_loop(self) -> None:
         while self.running:
             try:
-                prompt = self.queue.get(timeout=0.5)
+                payload = self.queue.get(timeout=0.5)
             except queue.Empty:
                 continue
-            if not prompt:
+            if not payload:
                 continue
-            self._dispatch_prompt(prompt)
+            self._dispatch_payload(payload)
 
-    def _dispatch_prompt(self, prompt: str) -> None:
-        payload = {"prompt": prompt, "context": {}}
-        if self.config.question_domain:
-            payload["context"]["question_type"] = self.config.question_domain
-
+    def _dispatch_payload(self, payload: dict) -> None:
         url = f"http://{self.config.host}:{self.config.port}/generate"
         headers = {"x-api-key": self.config.api_key}
         try:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 from fastapi import HTTPException
 
@@ -21,16 +21,27 @@ def extract_final_answer(text: str) -> Optional[str]:
     return final_line
 
 
-async def invoke_llm(prompt: str, system_prompt: str, model_override: Optional[str]) -> Tuple[str, str]:
+async def invoke_llm(
+    prompt: str,
+    system_prompt: str,
+    model_override: Optional[str],
+    images: Optional[List[str]] = None,
+) -> Tuple[str, str]:
     settings = get_settings()
     backend = settings.ai_backend
+    vision_active = bool(images) and settings.vision_enabled
     if backend == "ollama":
-        model = model_override or settings.ollama_model
+        model = model_override or (settings.ollama_vision_model if vision_active else settings.ollama_model)
         user_prompt = f"{system_prompt}\n\nUser:\n{prompt.strip()}\n"
-        return await ollama_client.generate(user_prompt, model)
+        return await ollama_client.generate(user_prompt, model, images=images if vision_active else None)
     if backend == "openai_compatible":
-        model = model_override or settings.openai_model
-        return await openai_client.generate(system_prompt, prompt.strip(), model)
+        model = model_override or (settings.openai_vision_model if vision_active else settings.openai_model)
+        return await openai_client.generate(
+            system_prompt,
+            prompt.strip(),
+            model,
+            images=images if vision_active else None,
+        )
     raise HTTPException(status_code=500, detail=f"Unsupported backend '{backend}'")
 
 
@@ -65,10 +76,11 @@ async def generate_response(
     system_prompt: str,
     domain: Optional[str],
     model_override: Optional[str],
+    images: Optional[List[str]] = None,
 ) -> Dict:
     request_id = str(uuid.uuid4())
     started = time.perf_counter()
-    model_name, response_text = await invoke_llm(prompt, system_prompt, model_override)
+    model_name, response_text = await invoke_llm(prompt, system_prompt, model_override, images=images)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     final_answer = extract_final_answer(response_text)
     return {

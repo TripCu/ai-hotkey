@@ -16,6 +16,7 @@ from run import (
     ensure_ollama_running,
     ensure_venv,
     install_dependencies,
+    apply_env_defaults,
     parse_env_file,
     start_backend,
     terminate_process,
@@ -28,6 +29,7 @@ ENV_FILE = ROOT / ".env"
 
 def main() -> int:
     env_values = parse_env_file(ENV_FILE)
+    apply_env_defaults(env_values)
     ensure_venv(VENV_DIR)
     python_executable = venv_python(VENV_DIR)
     if not python_executable.exists():

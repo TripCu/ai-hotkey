@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import binascii
 import logging
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status, Request
@@ -12,7 +11,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from backend.config import get_settings
-from backend.ocr import OCRError, OCR_AVAILABLE, dependency_hint, extract_text_from_image
 from backend.prompts_loader import load_base_prompt, load_domain_prompts
 from backend.services.generation import archive_response, generate_response
 from backend.storage import ensure_data_paths, get_recent_entries
@@ -46,87 +44,6 @@ def compose_system_prompt(domain_key: Optional[str]) -> str:
 async def verify_api_key(x_api_key: Optional[str] = Header(default=None, alias="x-api-key")) -> None:
     if not x_api_key or x_api_key != SETTINGS.api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
-
-
-def _process_ocr_items(
-    items: Sequence[tuple[str, bytes]],
-    initial_notes: Optional[List[str]] = None,
-) -> tuple[str, List[str]]:
-    notes: List[str] = list(initial_notes or [])
-    extracted_segments: List[str] = []
-
-    if not items:
-        return "\n".join(notes) if notes else "", extracted_segments
-
-    if not OCR_AVAILABLE:
-        notes.append(dependency_hint() + " Install Tesseract + Pillow (and optionally OpenCV) to enable OCR.")
-        return "\n".join(notes), extracted_segments
-
-    for label, content in items:
-        try:
-            text, segments = extract_text_from_image(content)
-            if text:
-                block = [f"Text from {label}:\n{text}"]
-                if segments:
-                    high_conf = [seg.text for seg in segments if seg.confidence >= 80]
-                    if high_conf:
-                        keywords = ", ".join(high_conf[:10])
-                        block.append(f"[Keywords] {keywords}")
-                extracted_segments.append("\n".join(block))
-            else:
-                notes.append(f"OCR found no text in {label}.")
-        except OCRError as exc:
-            notes.append(f"OCR failed for {label}: {exc}")
-        except Exception as exc:  # pragma: no cover - unexpected
-            notes.append(f"OCR error for {label}: {exc}")
-
-    if extracted_segments:
-        notes.append("OCR extracted text from provided images.")
-    elif not notes:
-        notes.append("Images processed but no OCR text extracted.")
-
-    return "\n".join(notes), extracted_segments
-
-
-async def append_ocr_context(files: Optional[List[UploadFile]]) -> tuple[str, List[str]]:
-    if not files:
-        return "", []
-
-    items: List[tuple[str, bytes]] = []
-    notes: List[str] = []
-
-    for file in files:
-        try:
-            content = await file.read()
-            if not content:
-                continue
-            items.append((file.filename or "image", content))
-        except Exception as exc:
-            notes.append(f"Failed to read {file.filename or 'image'}: {exc}")
-        finally:
-            await file.close()
-
-    return _process_ocr_items(items, notes)
-
-
-def append_ocr_context_from_base64(images: Optional[Sequence[str]]) -> tuple[str, List[str]]:
-    if not images:
-        return "", []
-
-    items: List[tuple[str, bytes]] = []
-    notes: List[str] = []
-
-    for idx, encoded in enumerate(images, start=1):
-        if not encoded:
-            continue
-        try:
-            data = base64.b64decode(encoded, validate=True)
-        except (binascii.Error, ValueError) as exc:
-            notes.append(f"Failed to decode base64 image #{idx}: {exc}")
-            continue
-        items.append((f"image-{idx}", data))
-
-    return _process_ocr_items(items, notes)
 
 
 app = FastAPI(title="AI Hotkey Backend", version="1.2.0")
@@ -167,13 +84,21 @@ async def generate_with_image(
     if SETTINGS.question_domain:
         payload.context.question_type = SETTINGS.question_domain
 
-    ocr_summary, extracted_segments = await append_ocr_context(files)
-    extended_prompt_parts = [prompt]
-    if extracted_segments:
-        extended_prompt_parts.append("Additional OCR context:\n" + "\n\n".join(extracted_segments))
-    if ocr_summary:
-        extended_prompt_parts.append(f"[Notes]\n{ocr_summary}")
-    payload.prompt = "\n\n".join(extended_prompt_parts)
+    collected: List[bytes] = []
+    if files:
+        for file in files:
+            try:
+                data = await file.read()
+                if data:
+                    collected.append(data)
+            finally:
+                await file.close()
+
+    if collected:
+        if not SETTINGS.vision_enabled:
+            raise HTTPException(status_code=400, detail="Vision support is disabled. Set VISION_ENABLED=1 and configure a vision model.")
+        payload.images = [base64.b64encode(data).decode("ascii") for data in collected]
+        payload.prompt_prefix = "Image(s) attached with the request."
 
     return await _handle_generation(payload, request)
 
@@ -198,18 +123,18 @@ async def _handle_generation(payload: GenerationPayload, http_request: Optional[
         domain = SETTINGS.question_domain
     system_prompt = compose_system_prompt(domain)
 
+    if payload.images and not SETTINGS.vision_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Vision support is disabled. Set VISION_ENABLED=1 and configure a vision-capable model.",
+        )
+
     prompt_parts: List[str] = []
     if payload.prompt_prefix:
         prompt_parts.append(payload.prompt_prefix.strip())
     prompt_parts.append(payload.prompt.strip())
-    if payload.images:
-        ocr_summary, ocr_segments = append_ocr_context_from_base64(payload.images)
-        if ocr_segments:
-            prompt_parts.append("Additional OCR context:\n" + "\n\n".join(ocr_segments))
-        if ocr_summary:
-            prompt_parts.append(f"[Notes]\n{ocr_summary}")
-    prompt_text_with_ocr = "\n\n".join(part for part in prompt_parts if part)
-    payload.prompt = prompt_text_with_ocr
+    prompt_text = "\n\n".join(part for part in prompt_parts if part)
+    payload.prompt = prompt_text
 
     history_entries = get_recent_entries(limit=5)
     history_section = ""
@@ -254,6 +179,7 @@ async def _handle_generation(payload: GenerationPayload, http_request: Optional[
             system_prompt=system_prompt,
             domain=domain,
             model_override=payload.model,
+            images=payload.images if SETTINGS.vision_enabled else None,
         )
     except httpx.HTTPError as exc:
         logger.exception("LLM request failed")

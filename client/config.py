@@ -37,6 +37,8 @@ class ClientConfig:
     start_key: str
     exit_key: str
     clipboard_key: str
+    screenshot_key: str
+    screenshot_prompt: str
     question_domain: str
     overlay_enabled: bool
     overlay_duration: float
@@ -53,6 +55,8 @@ def load_client_config() -> ClientConfig:
         start_key=data.get("START_KEY", "`"),
         exit_key=data.get("EXIT_KEY", "ESC"),
         clipboard_key=data.get("CLIPBOARD_KEY", "\\"),
+        screenshot_key=data.get("SCREENSHOT_KEY", "]"),
+        screenshot_prompt=data.get("SCREENSHOT_PROMPT", "Summarize the captured screenshot."),
         question_domain=(data.get("QUESTION_DOMAIN") or "").strip(),
         overlay_enabled=_bool(data.get("OVERLAY_ENABLED"), True),
         overlay_duration=_float(data.get("OVERLAY_DURATION"), 15.0),
