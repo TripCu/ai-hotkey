@@ -1,0 +1,203 @@
+{
+  "main": {
+    "id": "3aafeb836785c140",
+    "type": "split",
+    "children": [
+      {
+        "id": "0ef799a58ab05150",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8448628c7c8e8f6e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Untitled.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Untitled"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "7124e641a193b926",
+    "type": "split",
+    "children": [
+      {
+        "id": "c760e2f20d8b3636",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "202b88ed2e534a3d",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "318a9d4fcab49b4a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "b0bcb362163992c5",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "b6f17fe1c04f72bb",
+    "type": "split",
+    "children": [
+      {
+        "id": "b0655bef73460e2f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d32dc25ce83981bf",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Untitled.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Untitled"
+            }
+          },
+          {
+            "id": "95e04e41153139c6",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Untitled.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Untitled"
+            }
+          },
+          {
+            "id": "ec40dbb1232b65b1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "c1cda310160cef46",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Untitled.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Untitled"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "8448628c7c8e8f6e",
+  "lastOpenFiles": [
+    "Networking – Initial Router Configuratio.md",
+    "Untitled.md",
+    "Networking – Initial Router Configuration.md",
+    "Networking – Basic Switch and End Device Configuration Overview.md",
+    "Networking – Save Configurations.md",
+    "Networking – Module 9 Review and Practice.md",
+    "Networking – IPv6 Neighbor Discovery Protocol (ND).md",
+    "Networking – ARP Issues and Security Considerations.md",
+    "Networking – Address Resolution Protocol (ARP) Overview.md",
+    "Networking – MAC and IP Address Roles.md",
+    "Networking – Router Routing Tables and Forwarding Methods.md",
+    "Networking – Host Routing Decisions and Default Gateways.md",
+    "Networking – IPv6 Packet Structure and Improvements.md",
+    "Networking – IPv4 Packet Structure and Header Fields.md",
+    "Networking – Network Layer Characteristics.md",
+    "Networking – Switch Forwarding Methods and Port Settings.md",
+    "Networking – Switch MAC Address Tables and Frame Forwarding.md",
+    "Networking – Ethernet MAC Addresses and Address Types.md",
+    "Networking – Ethernet Overview & Frame Structure.md",
+    "Networking – LAN and WAN Frame Protocols.md",
+    "Networking – The Data Link Frame Structure and Fields.md",
+    "Networking – Topologies and Media Access Control Methods.md",
+    "Networking – Purpose of the Data Link Layer.md",
+    "Networking – Purpose of the Physical Layer.md",
+    "Networking – Number Systems Overview & Positional Notation.md",
+    "Networking – Hex & Binary Speed Drills and Patterns.md",
+    "ITN_Module_2.pptx.pdf",
+    "Untitled"
+  ]
+}
